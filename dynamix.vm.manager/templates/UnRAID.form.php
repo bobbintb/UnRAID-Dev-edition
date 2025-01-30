@@ -33,43 +33,43 @@
 	$strCPUModel = getHostCPUModel();
 	$arrValidProtocols = getValidVMRCProtocols();
 
-	// Read localpaths in from openelec.cfg
-	$strOpenELECConfig = "/boot/config/plugins/dynamix.vm.manager/openelec.cfg";
-	$arrOpenELECConfig = [];
+	// Read localpaths in from unraid.cfg
+	$strUnRAIDConfig = "/boot/config/plugins/dynamix.vm.manager/unraid.cfg";
+	$arrUnRAIDConfig = [];
 
-	if (file_exists($strOpenELECConfig)) {
-		$arrOpenELECConfig = parse_ini_file($strOpenELECConfig);
-	} elseif (!file_exists(dirname($strOpenELECConfig))) {
-		@mkdir(dirname($strOpenELECConfig), 0777, true);
+	if (file_exists($strUnRAIDConfig)) {
+		$arrUnRAIDConfig = parse_ini_file($strUnRAIDConfig);
+	} elseif (!file_exists(dirname($strUnRAIDConfig))) {
+		@mkdir(dirname($strUnRAIDConfig), 0777, true);
 	}
 
-	// Compare openelec.cfg and populate 'localpath' in $arrOEVersion
-	foreach ($arrOpenELECConfig as $strID => $strLocalpath) {
-		if (array_key_exists($strID, $arrOpenELECVersions)) {
-			$arrOpenELECVersions[$strID]['localpath'] = $strLocalpath;
+	// Compare unraid.cfg and populate 'localpath' in $arrOEVersion
+	foreach ($arrUnRAIDConfig as $strID => $strLocalpath) {
+		if (array_key_exists($strID, $arrUnRAIDVersions)) {
+			$arrUnRAIDVersions[$strID]['localpath'] = $strLocalpath;
 			if (file_exists($strLocalpath)) {
-				$arrOpenELECVersions[$strID]['valid'] = '1';
+				$arrUnRAIDVersions[$strID]['valid'] = '1';
 			}
 		}
 	}
 
 	if (isset($_POST['delete_version'])) {
-		$arrDeleteOpenELEC = [];
-		if (array_key_exists($_POST['delete_version'], $arrOpenELECVersions)) {
-			$arrDeleteOpenELEC = $arrOpenELECVersions[$_POST['delete_version']];
+		$arrDeleteUnRAID = [];
+		if (array_key_exists($_POST['delete_version'], $arrUnRAIDVersions)) {
+			$arrDeleteUnRAID = $arrUnRAIDVersions[$_POST['delete_version']];
 		}
 		$reply = [];
-		if (empty($arrDeleteOpenELEC)) {
+		if (empty($arrDeleteUnRAID)) {
 			$reply = ['error' => 'Unknown version: ' . $_POST['delete_version']];
 		} else {
 			// delete img file
-			@unlink($arrDeleteOpenELEC['localpath']);
+			@unlink($arrDeleteUnRAID['localpath']);
 
-			// Save to strOpenELECConfig
-			unset($arrOpenELECConfig[$_POST['delete_version']]);
+			// Save to strUnRAIDConfig
+			unset($arrUnRAIDConfig[$_POST['delete_version']]);
 			$text = '';
-			foreach ($arrOpenELECConfig as $key => $value) $text .= "$key=\"$value\"\n";
-			file_put_contents($strOpenELECConfig, $text);
+			foreach ($arrUnRAIDConfig as $key => $value) $text .= "$key=\"$value\"\n";
+			file_put_contents($strUnRAIDConfig, $text);
 			$reply = ['status' => 'ok'];
 		}
 
@@ -78,42 +78,42 @@
 	}
 
 	if (isset($_POST['download_path'])) {
-		$arrDownloadOpenELEC = [];
-		if (array_key_exists($_POST['download_version'], $arrOpenELECVersions)) {
-			$arrDownloadOpenELEC = $arrOpenELECVersions[$_POST['download_version']];
+		$arrDownloadUnRAID = [];
+		if (array_key_exists($_POST['download_version'], $arrUnRAIDVersions)) {
+			$arrDownloadUnRAID = $arrUnRAIDVersions[$_POST['download_version']];
 		}
-		if (empty($arrDownloadOpenELEC)) {
+		if (empty($arrDownloadUnRAID)) {
 			$reply = ['error' => _('Unknown version').': ' . $_POST['download_version']];
 		} elseif (empty($_POST['download_path'])) {
-			$reply = ['error' => _('Please choose a folder the OpenELEC image will download to')];
+			$reply = ['error' => _('Please choose a folder the UnRAID image will download to')];
 		} else {
 			@mkdir($_POST['download_path'], 0777, true);
 			$_POST['download_path'] = realpath($_POST['download_path']) . '/';
 
 			// Check free space
-			if (disk_free_space($_POST['download_path']) < $arrDownloadOpenELEC['size']+10000) {
-				$reply = ['error' => _('Not enough free space, need at least').' ' . ceil($arrDownloadOpenELEC['size']/1000000).'MB'];
+			if (disk_free_space($_POST['download_path']) < $arrDownloadUnRAID['size']+10000) {
+				$reply = ['error' => _('Not enough free space, need at least').' ' . ceil($arrDownloadUnRAID['size']/1000000).'MB'];
 				echo json_encode($reply);
 				exit;
 			}
 
 			$boolCheckOnly = !empty($_POST['checkonly']);
-			$strInstallScript = '/tmp/OpenELEC_' . $_POST['download_version'] . '_install.sh';
-			$strInstallScriptPgrep = '-f "OpenELEC_' . $_POST['download_version'] . '_install.sh"';
-			$strTempFile = $_POST['download_path'] . basename($arrDownloadOpenELEC['url']);
+			$strInstallScript = '/tmp/UnRAID_' . $_POST['download_version'] . '_install.sh';
+			$strInstallScriptPgrep = '-f "UnRAID_' . $_POST['download_version'] . '_install.sh"';
+			$strTempFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url']);
 			$strLogFile = $strTempFile . '.log';
 			$strMD5File = $strTempFile . '.md5';
 			$strMD5StatusFile = $strTempFile . '.md5status';
-			$strExtractedFile = $_POST['download_path'] . basename($arrDownloadOpenELEC['url'], 'tar.xz') . 'img';
+			$strExtractedFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url'], 'tar.xz') . 'img';
 
-			// Save to strOpenELECConfig
-			$arrOpenELECConfig[$_POST['download_version']] = $strExtractedFile;
+			// Save to strUnRAIDConfig
+			$arrUnRAIDConfig[$_POST['download_version']] = $strExtractedFile;
 			$text = '';
-			foreach ($arrOpenELECConfig as $key => $value) $text .= "$key=\"$value\"\n";
-			file_put_contents($strOpenELECConfig, $text);
+			foreach ($arrUnRAIDConfig as $key => $value) $text .= "$key=\"$value\"\n";
+			file_put_contents($strUnRAIDConfig, $text);
 
-			$strDownloadCmd = 'wget -nv -c -O ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($arrDownloadOpenELEC['url']);
-			$strDownloadPgrep = '-f "wget.*' . $strTempFile . '.*' . $arrDownloadOpenELEC['url'] . '"';
+			$strDownloadCmd = 'wget -nv -c -O ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($arrDownloadUnRAID['url']);
+			$strDownloadPgrep = '-f "wget.*' . $strTempFile . '.*' . $arrDownloadUnRAID['url'] . '"';
 			$strVerifyCmd = 'md5sum -c ' . escapeshellarg($strMD5File);
 			$strVerifyPgrep = '-f "md5sum.*' . $strMD5File . '"';
 			$strExtractCmd = 'tar Jxf ' . escapeshellarg($strTempFile) . ' -C ' . escapeshellarg(dirname($strTempFile));
@@ -122,7 +122,7 @@
 			$strCleanPgrep = '-f "chmod.*chown.*rm.*' . $strMD5StatusFile . '"';
 			$strAllCmd = "#!/bin/bash\n\n";
 			$strAllCmd .= $strDownloadCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
-			$strAllCmd .= 'echo "' . $arrDownloadOpenELEC['md5'] . '  ' . $strTempFile . '" > ' . escapeshellarg($strMD5File) . ' && ';
+			$strAllCmd .= 'echo "' . $arrDownloadUnRAID['md5'] . '  ' . $strTempFile . '" > ' . escapeshellarg($strMD5File) . ' && ';
 			$strAllCmd .= $strVerifyCmd . ' >' . escapeshellarg($strMD5StatusFile) . ' 2>/dev/null && ';
 			$strAllCmd .= $strExtractCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strCleanCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
@@ -151,7 +151,7 @@
 					$intSize = filesize($strTempFile);
 					$strPercent = 0;
 					if ($intSize > 0) {
-						$strPercent = round(($intSize / $arrDownloadOpenELEC['size']) * 100);
+						$strPercent = round(($intSize / $arrDownloadUnRAID['size']) * 100);
 					}
 					$reply['status'] = _('Downloading').' ... ' . $strPercent . '%';
 				} elseif (pgrep($strVerifyPgrep, false)) {
@@ -194,14 +194,14 @@
 		exit;
 	}
 
-	$arrOpenELECVersion = reset($arrOpenELECVersions);
-	$strOpenELECVersionID = key($arrOpenELECVersions);
+	$arrUnRAIDVersion = reset($arrUnRAIDVersions);
+	$strUnRAIDVersionID = key($arrUnRAIDVersions);
 
 	$arrConfigDefaults = [
 		'template' => [
 			'name' => $strSelectedTemplate,
 			'icon' => $arrAllTemplates[$strSelectedTemplate]['icon'],
-			'openelec' => $strOpenELECVersionID
+			'unraid' => $strUnRAIDVersionID
 		],
 		'domain' => [
 			'name' => $strSelectedTemplate,
@@ -228,7 +228,7 @@
 		],
 		'disk' => [
 			[
-				'image' => $arrOpenELECVersion['localpath'],
+				'image' => $arrUnRAIDVersion['localpath'],
 				'size' => '',
 				'driver' => 'raw',
 				'dev' => 'hda',
@@ -263,7 +263,7 @@
 		'usb' => [],
 		'shares' => [
 			[
-				'source' => (is_dir('/mnt/user/appdata') ? '/mnt/user/appdata/OpenELEC/' : ''),
+				'source' => (is_dir('/mnt/user/appdata') ? '/mnt/user/appdata/UnRAID/' : ''),
 				'target' => 'appconfig'
 			]
 		]
@@ -419,8 +419,8 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 		$arrVMUSBs = getVMUSBs($strXML) ;
 	}
 
-	if (array_key_exists($arrConfig['template']['openelec'], $arrLibreELECVersions)) {
-		$arrConfigDefaults['disk'][0]['image'] = $arrLibreELECVersions[$arrConfig['template']['openelec']]['localpath'];
+	if (array_key_exists($arrConfig['template']['unraid'], $arrUnRAIDVersions)) {
+		$arrConfigDefaults['disk'][0]['image'] = $arrUnRAIDVersions[$arrConfig['template']['unraid']]['localpath'];
 	}
 ?>
 
@@ -429,12 +429,12 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 <style type="text/css">
 	.CodeMirror { border: 1px solid #eee; cursor: text; margin-top: 15px; margin-bottom: 10px; }
 	.CodeMirror pre.CodeMirror-placeholder { color: #999; }
-	#openelec_image {
+	#unraid_image {
 		color: #BBB;
 		display: none;
 		transform: translate(0px, 3px);
 	}
-	.delete_openelec_image {
+	.delete_unraid_image {
 		cursor: pointer;
 		margin-left: -5px;
 		margin-right: 5px;
@@ -460,11 +460,11 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 		<table>
 			<tr>
 				<td>_(Name)_:</td>
-				<td><input type="text" name="domain[name]" id="domain_name" class="textTemplate" title="_(Name of virtual machine)_" placeholder="_(e.g.)_ _(OpenELEC)_" value="<?=htmlspecialchars($arrConfig['domain']['name'])?>" required /></td>
+				<td><input type="text" name="domain[name]" id="domain_name" class="textTemplate" title="_(Name of virtual machine)_" placeholder="_(e.g.)_ _(UnRAID)_" value="<?=htmlspecialchars($arrConfig['domain']['name'])?>" required /></td>
 			</tr>
 		</table>
 		<blockquote class="inline_help">
-			<p>Give the VM a name (e.g. OpenELEC Family Room, OpenELEC Theatre, OpenELEC)</p>
+			<p>Give the VM a name (e.g. UnRAID Family Room, UnRAID Theatre, UnRAID)</p>
 		</blockquote>
 
 		<table>
@@ -482,25 +482,25 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 
 	<table>
 		<tr>
-			<td>_(OpenELEC Version)_:</td>
+			<td>_(UnRAID Version)_:</td>
 			<td>
-				<select name="template[openelec]" id="template_openelec" class="narrow" title="_(Select the OpenELEC version to use)_">
+				<select name="template[unraid]" id="template_unraid" class="narrow" title="_(Select the UnRAID version to use)_">
 				<?
-					foreach ($arrOpenELECVersions as $strOEVersion => $arrOEVersion) {
+					foreach ($arrUnRAIDVersions as $strOEVersion => $arrOEVersion) {
 						$strDefaultFolder = '';
 						if (!empty($domain_cfg['DOMAINDIR']) && file_exists($domain_cfg['DOMAINDIR'])) {
-							$strDefaultFolder = str_replace('//', '/', $domain_cfg['DOMAINDIR'].'/OpenELEC/');
+							$strDefaultFolder = str_replace('//', '/', $domain_cfg['DOMAINDIR'].'/UnRAID/');
 						}
 						$strLocalFolder = ($arrOEVersion['localpath'] == '' ? $strDefaultFolder : dirname($arrOEVersion['localpath']));
-						echo mk_option($arrConfig['template']['openelec'], $strOEVersion, $arrOEVersion['name'], 'localpath="' . $arrOEVersion['localpath'] . '" localfolder="' . $strLocalFolder . '" valid="' . $arrOEVersion['valid'] . '"');
+						echo mk_option($arrConfig['template']['unraid'], $strOEVersion, $arrOEVersion['name'], 'localpath="' . $arrOEVersion['localpath'] . '" localfolder="' . $strLocalFolder . '" valid="' . $arrOEVersion['valid'] . '"');
 					}
 				?>
-				</select> <i class="fa fa-trash delete_openelec_image installed" title="_(Remove OpenELEC image)_"></i> <span id="openelec_image" class="installed"></span>
+				</select> <i class="fa fa-trash delete_unraid_image installed" title="_(Remove UnRAID image)_"></i> <span id="unraid_image" class="installed"></span>
 			</td>
 		</tr>
 	</table>
 	<blockquote class="inline_help">
-		<p>Select which OpenELEC version to download or use for this VM</p>
+		<p>Select which UnRAID version to download or use for this VM</p>
 	</blockquote>
 
 	<div class="available">
@@ -508,12 +508,12 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 			<tr>
 				<td>_(Download Folder)_:</td>
 				<td>
-					<input type="text" autocomplete="off" spellcheck="false" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt/" value="" id="download_path" placeholder="_(e.g.)_ /mnt/user/domains/" title="_(Folder to save the OpenELEC image to)_" />
+					<input type="text" autocomplete="off" spellcheck="false" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt/" value="" id="download_path" placeholder="_(e.g.)_ /mnt/user/domains/" title="_(Folder to save the UnRAID image to)_" />
 				</td>
 			</tr>
 		</table>
 		<blockquote class="inline_help">
-			<p>Choose a folder where the OpenELEC image will downloaded to</p>
+			<p>Choose a folder where the UnRAID image will downloaded to</p>
 		</blockquote>
 
 		<table>
@@ -531,13 +531,13 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 			<tr>
 				<td>_(Config Folder)_:</td>
 				<td>
-					<input type="text" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt/" value="<?=htmlspecialchars($arrConfig['shares'][0]['source'])?>" name="shares[0][source]" placeholder="_(e.g.)_ /mnt/user/appdata/openelec" title="_(path on Unraid share to save OpenELEC settings)_" required/>
+					<input type="text" data-pickfolders="true" data-pickfilter="NO_FILES_FILTER" data-pickroot="/mnt/" value="<?=htmlspecialchars($arrConfig['shares'][0]['source'])?>" name="shares[0][source]" placeholder="_(e.g.)_ /mnt/user/appdata/unraid" title="_(path on Unraid share to save UnRAID settings)_" required/>
 					<input type="hidden" value="<?=htmlspecialchars($arrConfig['shares'][0]['target'])?>" name="shares[0][target]" />
 				</td>
 			</tr>
 		</table>
 		<blockquote class="inline_help">
-			<p>Choose a folder or type in a new name off of an existing folder to specify where OpenELEC will save configuration files.  If you create multiple OpenELEC VMs, these Config Folders must be unique for each instance.</p>
+			<p>Choose a folder or type in a new name off of an existing folder to specify where UnRAID will save configuration files.  If you create multiple UnRAID VMs, these Config Folders must be unique for each instance.</p>
 		</blockquote>
 
 		<table>
@@ -1423,7 +1423,7 @@ $(function() {
 		$panel.find('input').prop('disabled', true);
 		$button.val($button.attr('busyvalue'));
 
-		$.post("/plugins/dynamix.vm.manager/templates/OpenELEC.form.php", postdata, function( data ) {
+		$.post("/plugins/dynamix.vm.manager/templates/UnRAID.form.php", postdata, function( data ) {
 			if (data.success) {
 				done();
 			}
@@ -1449,7 +1449,7 @@ $(function() {
 		$panel.find('input').prop('disabled', true);
 		$button.val($button.attr('busyvalue'));
 
-		$.post("/plugins/dynamix.vm.manager/templates/OpenELEC.form.php", postdata, function( data ) {
+		$.post("/plugins/dynamix.vm.manager/templates/UnRAID.form.php", postdata, function( data ) {
 			if (data.success) {
 				done();
 			}
@@ -1470,7 +1470,7 @@ $(function() {
 		var $form = $button.closest('form');
 
 		var postdata = {
-			download_version: $('#vmform #template_openelec').val(),
+			download_version: $('#vmform #template_unraid').val(),
 			download_path: $('#vmform #download_path').val(),
 			checkonly: ((typeof checkonly === 'undefined') ? false : !!checkonly) ? 1 : 0
 		};
@@ -1478,7 +1478,7 @@ $(function() {
 		$form.find('input').prop('disabled', true);
 		$button.val($button.attr('busyvalue'));
 
-		$.post("/plugins/dynamix.vm.manager/templates/OpenELEC.form.php", postdata, function( data ) {
+		$.post("/plugins/dynamix.vm.manager/templates/UnRAID.form.php", postdata, function( data ) {
 			if (data.error) {
 				$("#vmform #download_status").html($("#vmform #download_status").html() + '<br><span style="color: red">' + data.error + '</span>');
 			} else if (data.status) {
@@ -1497,12 +1497,12 @@ $(function() {
 				}
 
 				if (data.status == 'Done') {
-					$("#vmform #template_openelec").find('option:selected').attr({
+					$("#vmform #template_unraid").find('option:selected').attr({
 						localpath: data.localpath,
 						localfolder:  data.localfolder,
 						valid: '1'
 					});
-					$("#vmform #template_openelec").change();
+					$("#vmform #template_unraid").change();
 				}
 			}
 
@@ -1516,7 +1516,7 @@ $(function() {
 	});
 
 	// Fire events below once upon showing page
-	$("#vmform #template_openelec").change(function changeOpenELECVersion() {
+	$("#vmform #template_unraid").change(function changeUnRAIDVersion() {
 		clearTimeout(checkDownloadTimer);
 
 		$selected = $(this).find('option:selected');
@@ -1535,10 +1535,10 @@ $(function() {
 			$("#vmform .installed").slideDown('fast', function () {
 				resetForm();
 
-				// attach delete openelec image onclick event
-				$("#vmform .delete_openelec_image").off().click(function deleteOEVersion() {
-					swal({title:"_(Are you sure)_?",text:"_(Remove this OpenELEC file)_:\n"+$selected.attr('localpath'),type:"warning",showCancelButton:true,confirmButtonText:"_(Proceed)_",cancelButtonText:"_(Cancel)_"},function() {
-						$.post("/plugins/dynamix.vm.manager/templates/OpenELEC.form.php", {delete_version: $selected.val()}, function(data) {
+				// attach delete unraid image onclick event
+				$("#vmform .delete_unraid_image").off().click(function deleteOEVersion() {
+					swal({title:"_(Are you sure)_?",text:"_(Remove this UnRAID file)_:\n"+$selected.attr('localpath'),type:"warning",showCancelButton:true,confirmButtonText:"_(Proceed)_",cancelButtonText:"_(Cancel)_"},function() {
+						$.post("/plugins/dynamix.vm.manager/templates/UnRAID.form.php", {delete_version: $selected.val()}, function(data) {
 							if (data.error) {
 								swal({title:"_(VM image deletion error)_",text:data.error,type:"error",confirmButtonText:"_(Ok)_"});
 							} else if (data.status == 'ok') {
@@ -1547,17 +1547,17 @@ $(function() {
 									valid: '0'
 								});
 							}
-							$("#vmform #template_openelec").change();
+							$("#vmform #template_unraid").change();
 						}, "json");
 					});
 				}).hover(function () {
-					$("#vmform #openelec_image").css('color', '#666');
+					$("#vmform #unraid_image").css('color', '#666');
 				}, function () {
-					$("#vmform #openelec_image").css('color', '#BBB');
+					$("#vmform #unraid_image").css('color', '#BBB');
 				});
 			});
 			$("#vmform #disk_0").val($selected.attr('localpath'));
-			$("#vmform #openelec_image").html($selected.attr('localpath'));
+			$("#vmform #unraid_image").html($selected.attr('localpath'));
 		}
 	}).change(); // Fire now too!
 
