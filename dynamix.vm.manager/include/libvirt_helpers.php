@@ -486,6 +486,8 @@ private static $encoding = 'UTF-8';
 		]
 	];
 
+	$arrUnRAIDVersions = json_decode(file_get_contents('https://releases.unraid.net/usb-creator'), true);
+
 	$fedora = '/var/tmp/fedora-virtio-isos';
 	// set variable to obtained information
 	if (file_exists($fedora)) $virtio_isos = unserialize(file_get_contents($fedora)); else {
