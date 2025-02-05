@@ -103,15 +103,23 @@
 			$strTempFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url']);
 			$strLogFile = $strTempFile . '.log';
 			$strMD5File = $strTempFile . '.md5';
-			$strMD5StatusFile = $strTempFile . '.md5status';
-			$strExtractedFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url'], 'zip') . 'img';
-			$ddCmd = 'dd if=/dev/zero of=' . $strExtractedFile . ' bs=1M count=2048';
-			$partitionCmd = 'mkfs.vfat -F 32 -n UNRAID ' . $strExtractedFile;
-			$imgMount = '';
+			$strImgFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url'], 'zip') . 'img';
+			$strExtractTmpDir = '/tmp/UNRAID_x';
+			$ddCmd = 'dd if=/dev/zero of=' . $strImgFile . ' bs=1M count=2048';
+			$partitionCmd = 'mkfs.vfat -F 32 -n UNRAID ' . $strImgFile;
+			$installSyslinuxCmd = $strExtractTmpDir . '/syslinux/syslinux_linux -f --install '. $strImgFile . ' 1>/dev/null 2>/dev/null';
+			$mcopyCmd = 'mcopy -i '. $strImgFile . ' ' . $strExtractTmpDir . '/* ::';
+			$mbrCmd = 'dd if=' . $strExtractTmpDir . '/syslinux/mbr.bin of='. $strImgFile . ' 1>/dev/null 2>/dev/null';
+			
+			// create img file
+			// format
+			// extract zip to img
+			// run syslinux
+			// copy mbr
 
 
 			// Save to strUnRAIDConfig
-			$arrUnRAIDConfig[$_POST['download_version']] = $strExtractedFile;
+			$arrUnRAIDConfig[$_POST['download_version']] = $strImgFile;
 			$text = '';
 			foreach ($arrUnRAIDConfig as $key => $value) $text .= "$key=\"$value\"\n";
 			file_put_contents($strUnRAIDConfig, $text);
@@ -119,9 +127,9 @@
 			$strDownloadCmd = 'wget -nv -c -O ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($arrDownloadUnRAID['url']);
 			$strDownloadPgrep = '-f "wget.*' . $strTempFile . '.*' . $arrDownloadUnRAID['url'] . '"';
 			$strVerifyPgrep = '-f "md5sum.*' . $strMD5File . '"';
-			$strExtractCmd = 'unzip ' . escapeshellarg($strTempFile) . ' -d ' . escapeshellarg(dirname($strTempFile)) . '/tmp';
+			$strExtractCmd = 'unzip ' . escapeshellarg($strTempFile) . ' -d ' . escapeshellarg($strExtractTmpDir);
 			$strExtractPgrep = '-f "unzip.*' . $strTempFile . '.*' . dirname($strTempFile) . '"';
-			$strCleanCmd = '(chmod 777 ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strExtractedFile) . '; chown nobody:users ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strExtractedFile) . '; rm ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($strMD5File) . ' ' . escapeshellarg($strMD5StatusFile) . ')';
+			$strCleanCmd = '(chmod 777 ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; chown nobody:users ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; rm ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($strMD5File) . ')';
 			$strCleanPgrep = '-f "chmod.*chown.*rm.*' . $strMD5StatusFile . '"';
 			$strAllCmd = "#!/bin/bash\n\n";
 			$strAllCmd .= $strDownloadCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
@@ -129,16 +137,19 @@
 			$strAllCmd .= $ddCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $partitionCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strExtractCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= $mcopyCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= $installSyslinuxCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= $mbrCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strCleanCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strLogFile) . ' && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strInstallScript);
 			$reply = [];
-			if (file_exists($strExtractedFile)) {
+			if (file_exists($strImgFile)) {
 				if (!file_exists($strTempFile)) {
 					// Status = done
 					$reply['status'] = 'Done';
-					$reply['localpath'] = $strExtractedFile;
-					$reply['localfolder'] = dirname($strExtractedFile);
+					$reply['localpath'] = $strImgFile;
+					$reply['localfolder'] = dirname($strImgFile);
 				} else {
 					if (pgrep($strExtractPgrep, false)) {
 						// Status = running extract
