@@ -348,11 +348,11 @@ private static $encoding = 'UTF-8';
 			'form' => 'OpenELEC.form.php',
 			'icon' => 'openelec.png'
 		],
-		
-		'UnRAID' => [
-			'form' => 'UnRAID.form.php',
-			'icon' => 'unraid.png'
-		],
+
+                'UnRAID' => [
+                        'form' => 'UnRAID.form.php',
+                        'icon' => 'unraid.png'
+                ],
 
 		' Linux ' => '', /* Linux Header */
 
@@ -487,12 +487,11 @@ private static $encoding = 'UTF-8';
 	];
 
 	$arrUnRAIDVersions = json_decode(file_get_contents('https://releases.unraid.net/usb-creator'), true);
-
 	$arrUnRAIDVersions = array_merge(...array_map(
 		fn($os) => $os['subitems'] ?? [$os],
 		$arrUnRAIDVersions['os_list']
 	));
-	
+
 	$arrUnRAIDVersions = array_column(
 		array_map(
 			fn($item) => [
@@ -507,8 +506,6 @@ private static $encoding = 'UTF-8';
 		null,
 		'name'
 	);
-
-	echo "<script>console.log(" . json_encode($arrUnRAIDVersions) . ");</script>";
 
 	$fedora = '/var/tmp/fedora-virtio-isos';
 	// set variable to obtained information
