@@ -488,6 +488,28 @@ private static $encoding = 'UTF-8';
 
 	$arrUnRAIDVersions = json_decode(file_get_contents('https://releases.unraid.net/usb-creator'), true);
 
+	$arrUnRAIDVersions = array_merge(...array_map(
+		fn($os) => $os['subitems'] ?? [$os],
+		$arrUnRAIDVersions['os_list']
+	));
+	
+	$arrUnRAIDVersions = array_column(
+		array_map(
+			fn($item) => [
+				'name' => substr($item['name'], 7),
+				'url' => $item['url'],
+				'size' => $item['image_download_size'],
+				'localpath' => '',
+				'valid' => 0
+			],
+			array_filter($arrUnRAIDVersions, fn($item) => $item['name'] !== 'Unraid OS Releases (Next Branch)')
+		),
+		null,
+		'name'
+	);
+
+	echo "<script>console.log(" . json_encode($arrUnRAIDVersions) . ");</script>";
+
 	$fedora = '/var/tmp/fedora-virtio-isos';
 	// set variable to obtained information
 	if (file_exists($fedora)) $virtio_isos = unserialize(file_get_contents($fedora)); else {
