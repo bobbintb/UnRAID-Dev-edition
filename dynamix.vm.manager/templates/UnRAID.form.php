@@ -104,7 +104,11 @@
 			$strLogFile = $strTempFile . '.log';
 			$strMD5File = $strTempFile . '.md5';
 			$strMD5StatusFile = $strTempFile . '.md5status';
-			$strExtractedFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url'], 'tar.xz') . 'img';
+			$strExtractedFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url'], 'zip') . 'img';
+			$ddCmd = 'dd if=/dev/zero of=' . $strExtractedFile . ' bs=1M count=2048';
+			$partitionCmd = 'mkfs.vfat -F 32 -n UNRAID ' . $strExtractedFile;
+			$imgMount = '';
+
 
 			// Save to strUnRAIDConfig
 			$arrUnRAIDConfig[$_POST['download_version']] = $strExtractedFile;
@@ -114,21 +118,20 @@
 
 			$strDownloadCmd = 'wget -nv -c -O ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($arrDownloadUnRAID['url']);
 			$strDownloadPgrep = '-f "wget.*' . $strTempFile . '.*' . $arrDownloadUnRAID['url'] . '"';
-			$strVerifyCmd = 'md5sum -c ' . escapeshellarg($strMD5File);
 			$strVerifyPgrep = '-f "md5sum.*' . $strMD5File . '"';
-			$strExtractCmd = 'tar Jxf ' . escapeshellarg($strTempFile) . ' -C ' . escapeshellarg(dirname($strTempFile));
-			$strExtractPgrep = '-f "tar.*' . $strTempFile . '.*' . dirname($strTempFile) . '"';
+			$strExtractCmd = 'unzip ' . escapeshellarg($strTempFile) . ' -d ' . escapeshellarg(dirname($strTempFile)) . '/tmp';
+			$strExtractPgrep = '-f "unzip.*' . $strTempFile . '.*' . dirname($strTempFile) . '"';
 			$strCleanCmd = '(chmod 777 ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strExtractedFile) . '; chown nobody:users ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strExtractedFile) . '; rm ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($strMD5File) . ' ' . escapeshellarg($strMD5StatusFile) . ')';
 			$strCleanPgrep = '-f "chmod.*chown.*rm.*' . $strMD5StatusFile . '"';
 			$strAllCmd = "#!/bin/bash\n\n";
 			$strAllCmd .= $strDownloadCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= 'echo "' . $arrDownloadUnRAID['md5'] . '  ' . $strTempFile . '" > ' . escapeshellarg($strMD5File) . ' && ';
-			$strAllCmd .= $strVerifyCmd . ' >' . escapeshellarg($strMD5StatusFile) . ' 2>/dev/null && ';
+			$strAllCmd .= $ddCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= $partitionCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strExtractCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strCleanCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strLogFile) . ' && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strInstallScript);
-
 			$reply = [];
 			if (file_exists($strExtractedFile)) {
 				if (!file_exists($strTempFile)) {
