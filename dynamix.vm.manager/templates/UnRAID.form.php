@@ -127,7 +127,7 @@
 			$strDownloadCmd = 'wget -nv -c -O ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($arrDownloadUnRAID['url']);
 			$strDownloadPgrep = '-f "wget.*' . $strTempFile . '.*' . $arrDownloadUnRAID['url'] . '"';
 			$strVerifyPgrep = '-f "md5sum.*' . $strMD5File . '"';
-			$strExtractCmd = 'unzip ' . escapeshellarg($strTempFile) . ' -d ' . escapeshellarg($strExtractTmpDir);
+			$strExtractCmd = 'unzip -o ' . escapeshellarg($strTempFile) . ' -d ' . escapeshellarg($strExtractTmpDir);
 			$strExtractPgrep = '-f "unzip.*' . $strTempFile . '.*' . dirname($strTempFile) . '"';
 			$strCleanCmd = '(chmod 777 ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; chown nobody:users ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; rm ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($strMD5File) . ')';
 			$strCleanPgrep = '-f "chmod.*chown.*rm.*' . $strMD5StatusFile . '"';
