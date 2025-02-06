@@ -218,8 +218,8 @@
 			'clock' => 'utc',
 			'arch' => 'x86_64',
 			'machine' => getLatestMachineType('q35'),
-			'mem' => 512 * 1024,
-			'maxmem' => 512 * 1024,
+			'mem' => 4096 * 1024,
+			'maxmem' => 4096 * 1024,
 			'password' => '',
 			'cpumode' => 'host-passthrough',
 			'vcpus' => 1,
@@ -608,8 +608,8 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 					<select name="domain[mem]" id="domain_mem" class="narrow" title="_(define the amount memory)_">
 					<?
 						for ($i = 1; $i <= ($maxmem*2); $i++) {
-							$label = ($i * 512) . ' MB';
-							$value = $i * 512 * 1024;
+							$label = ($i * 4096) . ' MB';
+							$value = $i * 4096 * 1024;
 							echo mk_option($arrConfig['domain']['mem'], $value, $label);
 						}
 					?>
@@ -621,8 +621,8 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 					<select name="domain[maxmem]" id="domain_maxmem" class="narrow" title="_(define the maximum amount of memory)_">
 					<?
 						for ($i = 1; $i <= ($maxmem*2); $i++) {
-							$label = ($i * 512) . ' MB';
-							$value = $i * 512 * 1024;
+							$label = ($i * 4096) . ' MB';
+							$value = $i * 4096 * 1024;
 							echo mk_option($arrConfig['domain']['maxmem'], $value, $label);
 						}
 					?>
