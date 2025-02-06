@@ -105,19 +105,27 @@
 			$strMD5File = $strTempFile . '.md5';
 			$strImgFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url'], 'zip') . 'img';
 			$strExtractTmpDir = '/tmp/UNRAID_x';
-			$ddCmd = 'dd if=/dev/zero of=' . $strImgFile . ' bs=1M count=2048';
-			$partitionCmd = 'mkfs.vfat -F 32 -n UNRAID ' . $strImgFile;
-			$installSyslinuxCmd = $strExtractTmpDir . '/syslinux/syslinux_linux -f --install '. $strImgFile . ' 1>/dev/null 2>/dev/null';
-			$mcopyCmd = 'mcopy -i '. $strImgFile . ' ' . $strExtractTmpDir . '/* ::';
-			$mbrCmd = 'dd if=' . $strExtractTmpDir . '/syslinux/mbr.bin of='. $strImgFile . ' 1>/dev/null 2>/dev/null';
 			
-			// create img file
-			// format
-			// extract zip to img
-			// run syslinux
-			// copy mbr
-
-
+			$ddCmd = 'dd if=/dev/zero of=' . $strImgFile . ' bs=1M count=2048';
+			$partedCmd = 'parted ' . $strImgFile . ' --script mklabel msdos && parted ' . $strImgFile . ' --script mkpart primary fat32 1MiB 100%';
+			$strLoopDevice = 'LOOP_DEVICE=$(losetup --find --show --partscan ' . $strImgFile . ')';
+			$strPartition = 'PARTITION="${LOOP_DEVICE}p1"';
+			
+			$partitionCmd = 'mkfs.vfat -F 32 -n UNRAID $PARTITION';
+			$installSyslinuxCmd = $strExtractTmpDir . '/syslinux/syslinux_linux -f --install $PARTITION 1>/dev/null 2>/dev/null';
+			$mcopyCmd = 'mcopy -i "$PARTITION" -s ' . $strExtractTmpDir . '/* ::/';
+			$detachCmd = 'losetup -d "$LOOP_DEVICE"';
+			
+			
+			//dd if=/dev/zero of="$IMAGE_NAME" bs=1 count=0 seek="$IMAGE_SIZE" status=progress
+			//parted "$IMAGE_NAME" --script mklabel msdos && parted "$IMAGE_NAME" --script mkpart primary fat32 1MiB 100%
+			//LOOP_DEVICE=$(losetup --find --show --partscan "$IMAGE_NAME")
+			//PARTITION="${LOOP_DEVICE}p1"
+			//mkfs.vfat -F 32 -n "$LABEL" "$PARTITION"
+			//syslinux --install "$PARTITION"
+			//mcopy -i "$PARTITION" -s "$SOURCE_FILES" ::/
+			//sudo losetup -d "$LOOP_DEVICE"
+			
 			// Save to strUnRAIDConfig
 			$arrUnRAIDConfig[$_POST['download_version']] = $strImgFile;
 			$text = '';
@@ -134,12 +142,19 @@
 			$strAllCmd = "#!/bin/bash\n\n";
 			$strAllCmd .= $strDownloadCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= 'echo "' . $arrDownloadUnRAID['md5'] . '  ' . $strTempFile . '" > ' . escapeshellarg($strMD5File) . ' && ';
+			
 			$strAllCmd .= $ddCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= $partedCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			
+			$strAllCmd .= $strLoopDevice . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= $strPartition . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			
 			$strAllCmd .= $partitionCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strExtractCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
-			$strAllCmd .= $mcopyCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $installSyslinuxCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
-			$strAllCmd .= $mbrCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= $mcopyCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= $detachCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';			
+			
 			$strAllCmd .= $strCleanCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strLogFile) . ' && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strInstallScript);
