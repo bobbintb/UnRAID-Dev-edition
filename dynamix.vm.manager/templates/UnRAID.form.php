@@ -102,29 +102,17 @@
 			$strInstallScriptPgrep = '-f "UnRAID_' . $_POST['download_version'] . '_install.sh"';
 			$strTempFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url']);
 			$strLogFile = $strTempFile . '.log';
-			$strMD5File = $strTempFile . '.md5';
+			$strDownloadedFile = $strTempFile . '.downloaddone';
 			$strImgFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url'], 'zip') . 'img';
 			$strExtractTmpDir = '/tmp/UNRAID_x';
-			
 			$ddCmd = 'dd if=/dev/zero of=' . $strImgFile . ' bs=1M count=2048';
 			$partedCmd = 'parted ' . $strImgFile . ' --script mklabel msdos && parted ' . $strImgFile . ' --script mkpart primary fat32 1MiB 100%';
 			$strLoopDevice = 'LOOP_DEVICE=$(losetup --find --show --partscan ' . $strImgFile . ')';
 			$strPartition = 'PARTITION="${LOOP_DEVICE}p1"';
-			
 			$partitionCmd = 'mkfs.vfat -F 32 -n UNRAID $PARTITION';
 			$installSyslinuxCmd = $strExtractTmpDir . '/syslinux/syslinux_linux -f --install $PARTITION 1>/dev/null 2>/dev/null';
 			$mcopyCmd = 'mcopy -i "$PARTITION" -s ' . $strExtractTmpDir . '/* ::/';
 			$detachCmd = 'losetup -d "$LOOP_DEVICE"';
-			
-			
-			//dd if=/dev/zero of="$IMAGE_NAME" bs=1 count=0 seek="$IMAGE_SIZE" status=progress
-			//parted "$IMAGE_NAME" --script mklabel msdos && parted "$IMAGE_NAME" --script mkpart primary fat32 1MiB 100%
-			//LOOP_DEVICE=$(losetup --find --show --partscan "$IMAGE_NAME")
-			//PARTITION="${LOOP_DEVICE}p1"
-			//mkfs.vfat -F 32 -n "$LABEL" "$PARTITION"
-			//syslinux --install "$PARTITION"
-			//mcopy -i "$PARTITION" -s "$SOURCE_FILES" ::/
-			//sudo losetup -d "$LOOP_DEVICE"
 			
 			// Save to strUnRAIDConfig
 			$arrUnRAIDConfig[$_POST['download_version']] = $strImgFile;
@@ -134,27 +122,22 @@
 
 			$strDownloadCmd = 'wget -nv -c -O ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($arrDownloadUnRAID['url']);
 			$strDownloadPgrep = '-f "wget.*' . $strTempFile . '.*' . $arrDownloadUnRAID['url'] . '"';
-			$strVerifyPgrep = '-f "md5sum.*' . $strMD5File . '"';
 			$strExtractCmd = 'unzip -o ' . escapeshellarg($strTempFile) . ' -d ' . escapeshellarg($strExtractTmpDir);
 			$strExtractPgrep = '-f "unzip.*' . $strTempFile . '.*' . dirname($strTempFile) . '"';
-			$strCleanCmd = '(chmod 777 ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; chown nobody:users ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; rm ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($strMD5File) . ')';
+			$strCleanCmd = '(chmod 777 ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; chown nobody:users ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; rm ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($strMD5File) . '; rm -dr ' . escapeshellarg($strExtractTmpDir) . ')';
 			$strCleanPgrep = '-f "chmod.*chown.*rm.*' . $strMD5StatusFile . '"';
 			$strAllCmd = "#!/bin/bash\n\n";
 			$strAllCmd .= $strDownloadCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
-			$strAllCmd .= 'echo "' . $arrDownloadUnRAID['md5'] . '  ' . $strTempFile . '" > ' . escapeshellarg($strMD5File) . ' && ';
-			
+			$strAllCmd .= 'touch ' . escapeshellarg($strDownloadedFile) . ' && ';
 			$strAllCmd .= $ddCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $partedCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
-			
 			$strAllCmd .= $strLoopDevice . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strPartition . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
-			
 			$strAllCmd .= $partitionCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strExtractCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $installSyslinuxCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $mcopyCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $detachCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';			
-			
 			$strAllCmd .= $strCleanCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strLogFile) . ' && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strInstallScript);
@@ -183,9 +166,6 @@
 						$strPercent = round(($intSize / $arrDownloadUnRAID['size']) * 100);
 					}
 					$reply['status'] = _('Downloading').' ... ' . $strPercent . '%';
-				} elseif (pgrep($strVerifyPgrep, false)) {
-					// Status = running md5 check
-					$reply['status'] = _('Verifying').' ... ';
 				} elseif (file_exists($strMD5StatusFile)) {
 					// Status = running extract
 					$reply['status'] = _('Extracting').' ... ';
@@ -198,8 +178,7 @@
 							$reply['error'] = _('MD5 verification failed, your download is incomplete or corrupted').'.';
 						}
 					}
-				} elseif (!file_exists($strMD5File)) {
-					// Status = running md5 check
+				} elseif (!file_exists($strDownloadedFile)) {
 					$reply['status'] = _('Downloading').' ... 100%';
 					if (!pgrep($strInstallScriptPgrep, false) && !$boolCheckOnly) {
 						// Run all commands
@@ -482,7 +461,7 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 
 <input type="hidden" name="disk[0][image]" id="disk_0" value="<?=htmlspecialchars($arrConfig['disk'][0]['image'])?>">
 <input type="hidden" name="disk[0][dev]" value="<?=htmlspecialchars($arrConfig['disk'][0]['dev'])?>">
-<input type="hidden" name="disk[0][readonly]" value="1">
+<input type="hidden" name="disk[0][bus]" value="usb">
 <input type="hidden" class="bootorder" name="disk[0][boot]" value="1">
 
 	<div class="installed">
@@ -493,7 +472,7 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 			</tr>
 		</table>
 		<blockquote class="inline_help">
-			<p>Give the VM a name (e.g. UnRAID Family Room, UnRAID Theatre, UnRAID)</p>
+			<p>Give the VM a name (e.g. UnRAID Server)</p>
 		</blockquote>
 
 		<table>
