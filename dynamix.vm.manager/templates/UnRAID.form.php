@@ -100,12 +100,12 @@
 			$boolCheckOnly = !empty($_POST['checkonly']);
 			$strInstallScript = '/tmp/UnRAID_' . $_POST['download_version'] . '_install.sh';
 			$strInstallScriptPgrep = '-f "UnRAID_' . $_POST['download_version'] . '_install.sh"';
-			$strTempFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url']);
-			$strLogFile = $strTempFile . '.log';
-			$strDownloadedFile = $strTempFile . '.downloaddone';
+			$strZipFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url']);
+			$strLogFile = $strZipFile . '.log';
+			$strMD5File = $strZipFile . '.md5';
+			$strMD5StatusFile = $strZipFile . '.md5status';
 			$strImgFile = $_POST['download_path'] . basename($arrDownloadUnRAID['url'], 'zip') . 'img';
 			$strExtractTmpDir = '/tmp/UNRAID_x';
-			$ddCmd = 'dd if=/dev/zero of=' . $strImgFile . ' bs=1M count=2048';
 			$partedCmd = 'parted ' . $strImgFile . ' --script mklabel msdos && parted ' . $strImgFile . ' --script mkpart primary fat32 1MiB 100%';
 			$strLoopDevice = 'LOOP_DEVICE=$(losetup --find --show --partscan ' . $strImgFile . ')';
 			$strPartition = 'PARTITION="${LOOP_DEVICE}p1"';
@@ -113,23 +113,25 @@
 			$installSyslinuxCmd = $strExtractTmpDir . '/syslinux/syslinux_linux -f --install $PARTITION 1>/dev/null 2>/dev/null';
 			$mcopyCmd = 'mcopy -i "$PARTITION" -s ' . $strExtractTmpDir . '/* ::/';
 			$detachCmd = 'losetup -d "$LOOP_DEVICE"';
-			
+
 			// Save to strUnRAIDConfig
 			$arrUnRAIDConfig[$_POST['download_version']] = $strImgFile;
 			$text = '';
 			foreach ($arrUnRAIDConfig as $key => $value) $text .= "$key=\"$value\"\n";
 			file_put_contents($strUnRAIDConfig, $text);
 
-			$strDownloadCmd = 'wget -nv -c -O ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($arrDownloadUnRAID['url']);
-			$strDownloadPgrep = '-f "wget.*' . $strTempFile . '.*' . $arrDownloadUnRAID['url'] . '"';
-			$strExtractCmd = 'unzip -o ' . escapeshellarg($strTempFile) . ' -d ' . escapeshellarg($strExtractTmpDir);
-			$strExtractPgrep = '-f "unzip.*' . $strTempFile . '.*' . dirname($strTempFile) . '"';
-			$strCleanCmd = '(chmod 777 ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; chown nobody:users ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; rm ' . escapeshellarg($strTempFile) . ' ' . escapeshellarg($strMD5File) . '; rm -dr ' . escapeshellarg($strExtractTmpDir) . ')';
+			$strDownloadCmd = 'wget -nv -c -O ' . escapeshellarg($strZipFile) . ' ' . escapeshellarg($arrDownloadUnRAID['url']);
+			$strDownloadPgrep = '-f "wget.*' . $strZipFile . '.*' . $arrDownloadUnRAID['url'] . '"';
+			$strDdCmd = 'dd if=/dev/zero of=' . $strImgFile . ' bs=1M count=2048';
+			$strDdPgrep = '-f "dd if=/dev/zero of=' . $strImgFile . ' bs=1M count=2048"';
+			$strExtractCmd = 'unzip -o ' . escapeshellarg($strZipFile) . ' -d ' . escapeshellarg($strExtractTmpDir);
+			$strExtractPgrep = '-f "unzip.*' . $strZipFile . '.*' . dirname($strZipFile) . '"';
+			$strCleanCmd = '(chmod 777 ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; chown nobody:users ' . escapeshellarg($_POST['download_path']) . ' ' . escapeshellarg($strImgFile) . '; rm ' . escapeshellarg($strZipFile) . ' ' . escapeshellarg($strMD5File) . ' ' . escapeshellarg($strMD5StatusFile) . '; rm -dr ' . escapeshellarg($strExtractTmpDir) . ')';
 			$strCleanPgrep = '-f "chmod.*chown.*rm.*' . $strMD5StatusFile . '"';
 			$strAllCmd = "#!/bin/bash\n\n";
 			$strAllCmd .= $strDownloadCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
-			$strAllCmd .= 'touch ' . escapeshellarg($strDownloadedFile) . ' && ';
-			$strAllCmd .= $ddCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
+			$strAllCmd .= 'touch ' . escapeshellarg($strMD5File) . ' && ';
+			$strAllCmd .= $strDdCmd . ' && touch ' . escapeshellarg($strMD5StatusFile) . ' 2>/dev/null && ';
 			$strAllCmd .= $partedCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strLoopDevice . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strPartition . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
@@ -137,39 +139,51 @@
 			$strAllCmd .= $strExtractCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $installSyslinuxCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $mcopyCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
-			$strAllCmd .= $detachCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';			
+			$strAllCmd .= $detachCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= $strCleanCmd . ' >>' . escapeshellarg($strLogFile) . ' 2>&1 && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strLogFile) . ' && ';
 			$strAllCmd .= 'rm ' . escapeshellarg($strInstallScript);
+			
+			// 1. zip DOWNLOADING, zip EXISTS
+			// 2. zip EXISTS
+			// 3. dd RUNNING, img EXISTS
+			// 4. zip EXISTS, img EXISTS
+
 			$reply = [];
 			if (file_exists($strImgFile)) {
-				if (!file_exists($strTempFile)) {
+				if (!file_exists($strZipFile)) {	// if the *.img files EXISTS and the *.zip file DOES NOT EXIST
 					// Status = done
 					$reply['status'] = 'Done';
 					$reply['localpath'] = $strImgFile;
 					$reply['localfolder'] = dirname($strImgFile);
 				} else {
-					if (pgrep($strExtractPgrep, false)) {
+					if (pgrep($strExtractPgrep, false)) {	// if the *.img files EXISTS, the *.zip file EXISTS, and the unzip process is RUNNING
 						// Status = running extract
 						$reply['status'] = _('Extracting').' ... ';
+						//exec('echo "extracting" >> ' . escapeshellarg($strLogFile));
 					} else {
 						// Status = cleanup
-						$reply['status'] = _('Cleanup').' ... ';
+						$reply['status'] = _('Cleanup').' ... ';	// if the *.img files EXISTS, the *.zip file EXISTS, and the unzip process is NOT RUNNING
 					}
 				}
-			} elseif (file_exists($strTempFile)) {
-				if (pgrep($strDownloadPgrep, false)) {
+			} elseif (file_exists($strZipFile)) {		// if the *.img file DOES NOT EXIST and the zip file EXIST
+				if (pgrep($strDownloadPgrep, false)) {	// if the *.img file DOES NOT EXIST and the zip file EXIST but is still DOWNLOADING
 					// Get Download percent completed
-					$intSize = filesize($strTempFile);
+					$intSize = filesize($strZipFile);
 					$strPercent = 0;
 					if ($intSize > 0) {
 						$strPercent = round(($intSize / $arrDownloadUnRAID['size']) * 100);
 					}
 					$reply['status'] = _('Downloading').' ... ' . $strPercent . '%';
-				} elseif (file_exists($strMD5StatusFile)) {
+				} elseif (pgrep($strDdPgrep, false)) {		// if the *.img file DOES NOT EXIST, the zip file EXIST and is NOT DOWNLOADING, and the dd command is RUNNING
+					// Status = running md5 check
+					$reply['status'] = _('Creating image').' ... ';
+					//exec('echo "creating image" >> ' . escapeshellarg($strLogFile));
+				} elseif (file_exists($strMD5StatusFile)) {		// if the *.img file DOES NOT EXIST, the zip file EXIST and is NOT DOWNLOADING, the dd command is NOT RUNNING, and the md5status EXISTS
 					// Status = running extract
 					$reply['status'] = _('Extracting').' ... ';
-					if (!pgrep($strExtractPgrep, false)) {
+					//exec('echo "extracting" >> ' . escapeshellarg($strLogFile));
+					if (!pgrep($strExtractPgrep, false)) {		// if the *.img file DOES NOT EXIST, the zip file EXIST and is NOT DOWNLOADING, the dd command is NOT RUNNING, the md5status EXISTS, and the unzip process is NOT RUNNING
 						// Examine md5 status
 						$strMD5StatusContents = file_get_contents($strMD5StatusFile);
 						if (strpos($strMD5StatusContents, ': FAILED') !== false) {
@@ -178,7 +192,8 @@
 							$reply['error'] = _('MD5 verification failed, your download is incomplete or corrupted').'.';
 						}
 					}
-				} elseif (!file_exists($strDownloadedFile)) {
+				} elseif (!file_exists($strMD5File)) {		// if the *.img file DOES NOT EXIST, the zip file EXIST and is NOT DOWNLOADING, the dd command is NOT RUNNING, the md5status DOES NOT EXIST, and md5 DOES NOT EXIST
+					// Status = running md5 check
 					$reply['status'] = _('Downloading').' ... 100%';
 					if (!pgrep($strInstallScriptPgrep, false) && !$boolCheckOnly) {
 						// Run all commands
@@ -193,6 +208,7 @@
 					file_put_contents($strInstallScript, $strAllCmd);
 					chmod($strInstallScript, 0777);
 					exec($strInstallScript . ' >/dev/null 2>&1 &');
+					//exec('echo "DONE" >> ' . escapeshellarg($strLogFile));
 				}
 				$reply['status'] = _('Downloading').' ... ';
 			}
@@ -427,8 +443,8 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 		$arrVMUSBs = getVMUSBs($strXML) ;
 	}
 
-	if (array_key_exists($arrConfig['template']['unraid'], $arrUnRAIDVersions)) {
-		$arrConfigDefaults['disk'][0]['image'] = $arrUnRAIDVersions[$arrConfig['template']['unraid']]['localpath'];
+	if (array_key_exists($arrConfig['template']['unraid'], $arrLibreELECVersions)) {
+		$arrConfigDefaults['disk'][0]['image'] = $arrLibreELECVersions[$arrConfig['template']['unraid']]['localpath'];
 	}
 ?>
 
@@ -472,7 +488,7 @@ $hdrXML = "<?xml version='1.0' encoding='UTF-8'?>\n"; // XML encoding declaratio
 			</tr>
 		</table>
 		<blockquote class="inline_help">
-			<p>Give the VM a name (e.g. UnRAID Server)</p>
+			<p>Give the VM a name (e.g. UnRAID Server, UnRAID)</p>
 		</blockquote>
 
 		<table>
