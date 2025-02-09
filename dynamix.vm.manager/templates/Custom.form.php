@@ -334,6 +334,7 @@
 
 <link rel="stylesheet" href="<?autov('/plugins/dynamix.vm.manager/scripts/codemirror/lib/codemirror.css')?>">
 <link rel="stylesheet" href="<?autov('/plugins/dynamix.vm.manager/scripts/codemirror/addon/hint/show-hint.css')?>">
+<link rel="stylesheet" href="<?autov('/plugins/dynamix.vm.manager/sheets/VMSettings.css')?>">
 <style type="text/css">
 	.CodeMirror { border: 1px solid #eee; cursor: text; margin-top: 15px; margin-bottom: 10px; }
 	.CodeMirror pre.CodeMirror-placeholder { color: #999; }
@@ -698,23 +699,17 @@
 		<tr>
 			<td>_(OS Install ISO)_:</td>
 			<td>
-				<input type="text" name="media[cdrom]" autocomplete="off" spellcheck="false" data-pickcloseonfile="true" data-pickfilter="iso" data-pickmatch="^[^.].*" data-pickroot="<?=htmlspecialchars($domain_cfg['MEDIADIR'])?>" class="cdrom" value="<?=htmlspecialchars($arrConfig['media']['cdrom'])?>" placeholder="_(Click and Select cdrom image to install operating system)_">
-			</td>
-			<td><textarea class="xml" id="xmlvdiskhda" rows=1 disabled wrap="soft"><?=htmlspecialchars($xml2['devices']['disk']['hda'])?></textarea></td>
-		</tr>
-		<tr>
-			<td>_(OS Install ISO)_:</td>
-			<td>
 			<select id="winvirtio_select" class="lock" disabled></select>
 			<input type="text" id="winvirtio" name="VIRTIOISO" data-pickfilter="iso" data-pickcloseonfile="true" data-pickroot="<?=is_dir('/mnt/user')?'/mnt/user':'/mnt'?>" value="<?=htmlspecialchars($domain_cfg['VIRTIOISO'])?>"<?if ($started):?> placeholder="_(Click to Select)_" pattern="^[^\\]*\.(iso|ISO)$"<?endif;?>>
-			  <i class="fa fa-trash fa-fw" id="remove_button" title="_(Remove Windows VirtIO driver ISO)_">
+			  <i class="fa fa-trash fa-fw" id="remove_button" title="_(Remove Ubuntu ISO)_">
 			  <span>&nbsp;_(Remove)_</span>
 			  </i>
-			  <i class="fa fa-download fa-fw" id="download_button" title="_(Download Windows VirtIO driver ISO)_">
+			  <i class="fa fa-download fa-fw" id="download_button" title="_(Download Ubuntu ISO)_">
 			  <span>&nbsp;_(Download)_</span>
 			  </i>
 			  <span id="download_status"></span>
 			</td>
+			<input type="hidden" id="mediadir" name="MEDIADIR" data-pickroot="<?=is_dir('/mnt/user')?'/mnt/user':'/mnt'?>" value="<?=htmlspecialchars($domain_cfg['MEDIADIR'])?>">
 		</tr>
 		<tr class="advanced">
 			<td>_(OS Install CDRom Bus)_:</td>
@@ -2731,7 +2726,7 @@ $(function() {
 });
 
 $(function(){
-  $.post("/plugins/dynamix.vm.manager/include/Fedora-virtio-isos.php",{},function(isos) {
+  $.post("/plugins/dynamix.vm.manager/include/ubuntu-isos.php",{},function(isos) {
     $('#winvirtio_select').html(isos).prop('disabled',false).change().each(function(){$(this).on('change',function() {
       // attach button updates when select element changes
       var form = $(this).parentsUntil('form').parent();
@@ -2770,7 +2765,7 @@ $(function(){
     var $button = $("#download_button");
     var $form = $button.closest('form');
     var postdata = {
-      action: "virtio-win-iso-download",
+      action: "ubuntu-iso-download",
       download_version: $('#winvirtio_select').val(),
       download_path: $('#mediadir').val(),
       checkonly: ((typeof checkonly === 'undefined') ? false : !!checkonly) ? 1 : 0
