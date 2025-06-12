@@ -55,9 +55,9 @@ slackpkg update gpg <<< y
 cd /
 sed -i 's/--passphrase-fd 0/--pinentry-mode loopback/' /usr/libexec/slackrepo/gen_repos_files.sh
 chmod +x /usr/libexec/slackrepo/gen_repos_files.sh
-sbopkg -r
+# sbopkg -r
 
 # install python
-slackpkg install slackware64:python3 slackware64:python-pip slackware64:pkg-config
-slackpkg reinstall slackware64:zlib slackware64:elfutils slackware64:zstd slackware64:glibc slackware64:jemalloc
-rm -dr /root/.gnupg/
+# slackpkg install slackware64:python3 slackware64:python-pip slackware64:pkg-config
+# slackpkg reinstall slackware64:zlib slackware64:elfutils slackware64:zstd slackware64:glibc slackware64:jemalloc
+# rm -dr /root/.gnupg/
