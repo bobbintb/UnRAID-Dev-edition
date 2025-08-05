@@ -2,7 +2,7 @@ mkdir /pkgs
 cd /pkgs
 
 # Download latest packages needed for slackpkg
-wget -nd --recursive --level=1 --accept --no-check-certificate -e robots=off "gnupg2-*-x86_64-*.txz, libassuan-*-x86_64-*.txz, npth-*-x86_64-*.txz, libksba-*-x86_64-*.txz" https://slackware.uk/slackware/slackware64-current/slackware64/n/
+wget -nd --recursive --level=1 --accept "gnupg2-*-x86_64-*.txz, libassuan-*-x86_64-*.txz, npth-*-x86_64-*.txz, libksba-*-x86_64-*.txz" https://slackware.uk/slackware/slackware64-current/slackware64/n/
 
 # Download latest slackpkg, slackpkg+, sbopkg, and slackrepo
 wget -nd --recursive --level=1 --accept "slackpkg-*-noarch-*.txz" https://slackware.uk/slackware/slackware64-current/slackware64/ap/
